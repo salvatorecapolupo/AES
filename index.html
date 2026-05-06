@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AES — visualizzatore didattico</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-sec: #f5f5f4;
+    --bg-ter: #eeece9;
+    --text: #1a1a18;
+    --text-sec: #6b6b67;
+    --text-ter: #9a9a95;
+    --border: rgba(0,0,0,0.12);
+    --border-sec: rgba(0,0,0,0.22);
+    --border-pri: rgba(0,0,0,0.35);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: 'Courier New', monospace;
+    --blue-bg: #E6F1FB;
+    --blue-border: #185FA5;
+    --blue-text: #0C447C;
+    --green-bg: #E1F5EE;
+    --green-border: #0F6E56;
+    --green-text: #085041;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg-sec: #252523;
+      --bg-ter: #2e2e2b;
+      --text: #f0ede8;
+      --text-sec: #a0a09a;
+      --text-ter: #6b6b67;
+      --border: rgba(255,255,255,0.1);
+      --border-sec: rgba(255,255,255,0.18);
+      --border-pri: rgba(255,255,255,0.28);
+      --blue-bg: #0c2540;
+      --blue-border: #378ADD;
+      --blue-text: #B5D4F4;
+      --green-bg: #04221a;
+      --green-border: #1D9E75;
+      --green-text: #9FE1CB;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    padding: 2rem 1rem;
+    min-height: 100vh;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-sec); margin-bottom: 2rem; }
+
+  .tabs-wrap { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .tab-btn {
+    padding: 6px 16px; border: 0.5px solid var(--border-sec);
+    border-radius: var(--radius); background: transparent; color: var(--text-sec);
+    cursor: pointer; font-size: 12px; font-family: var(--font-sans);
+    transition: all .2s;
+  }
+  .tab-btn:hover { background: var(--bg-sec); }
+  .tab-btn.active { background: var(--bg-sec); color: var(--text); border-color: var(--border-pri); }
+
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-sec); margin-bottom: 6px; }
+  .row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 160px; }
+  input[type=text] {
+    font-family: var(--font-mono); font-size: 12px; padding: 8px 10px;
+    border: 0.5px solid var(--border-sec); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); width: 100%;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--border-pri); }
+  .err { font-size: 11px; color: #A32D2D; margin-top: 3px; }
+
+  .btn-row { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+  button {
+    padding: 7px 16px; border: 0.5px solid var(--border-sec);
+    border-radius: var(--radius); background: transparent; color: var(--text);
+    cursor: pointer; font-size: 12px; font-family: var(--font-sans);
+    transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover { background: var(--bg-sec); }
+  button:active { transform: scale(.98); }
+  button:disabled { opacity: .4; cursor: default; }
+  .btn-go { background: var(--bg-sec); border-color: var(--border-pri); font-weight: 500; }
+  .speed-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .speed-wrap label { font-size: 11px; color: var(--text-sec); }
+  input[type=range] {
+    width: 72px; accent-color: var(--blue-border);
+    cursor: pointer;
+  }
+
+  .result-area {
+    background: var(--bg-sec); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 1.5rem; min-height: 44px;
+  }
+  .result-area .rl { font-size: 11px; color: var(--text-sec); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .result-area .rv { font-family: var(--font-mono); font-size: 12px; word-break: break-all; }
+
+  .phase-bar { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .phase-pill {
+    padding: 5px 12px; border-radius: 9999px; border: 0.5px solid var(--border);
+    font-size: 11px; color: var(--text-sec); background: var(--bg); transition: all .3s;
+  }
+  .phase-pill.active { border-color: var(--blue-border); background: var(--blue-bg); color: var(--blue-text); }
+  .phase-pill.done { border-color: var(--green-border); background: var(--green-bg); color: var(--green-text); }
+
+  .status-bar {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    border-radius: var(--radius); background: var(--bg-sec); margin-bottom: 1rem; font-size: 12px;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-sec); flex-shrink: 0; }
+  .status-dot.running { background: #378ADD; animation: pulse 1s infinite; }
+  .status-dot.done-dot { background: #1D9E75; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-text { color: var(--text-sec); }
+
+  .progress-track { height: 2px; background: var(--border); border-radius: 1px; margin-bottom: 1.5rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: #378ADD; width: 0%; transition: width .3s; }
+
+  .step-item {
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 8px; overflow: hidden;
+    opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease;
+  }
+  .step-item.vis { opacity: 1; transform: translateY(0); }
+  .step-item.current { border-color: var(--blue-border); }
+
+  .step-header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--bg); cursor: pointer; user-select: none;
+  }
+  .step-item.current .step-header { background: var(--blue-bg); }
+
+  .step-badge {
+    width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 10px; font-weight: 500; flex-shrink: 0;
+    background: var(--bg-sec); color: var(--text-sec); border: 0.5px solid var(--border);
+  }
+  .step-item.current .step-badge { background: var(--blue-border); color: #fff; border-color: var(--blue-border); }
+  .step-item.done-step .step-badge { background: var(--green-border); color: #fff; border-color: var(--green-border); }
+
+  .step-title { font-size: 13px; font-weight: 500; flex: 1; }
+  .step-round { font-size: 11px; color: var(--text-sec); }
+  .op-tag { font-size: 10px; padding: 3px 9px; border-radius: 9999px; border: 0.5px solid transparent; flex-shrink: 0; }
+  .tag-sb { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
+  .tag-sr { background: #E1F5EE; border-color: #5DCAA5; color: #085041; }
+  .tag-mc { background: #FAEEDA; border-color: #EF9F27; color: #633806; }
+  .tag-ak { background: #FAECE7; border-color: #F0997B; color: #4A1B0C; }
+  @media (prefers-color-scheme: dark) {
+    .tag-sb { background: #26215C; border-color: #534AB7; color: #CECBF6; }
+    .tag-sr { background: #04342C; border-color: #0F6E56; color: #9FE1CB; }
+    .tag-mc { background: #412402; border-color: #854F0B; color: #FAC775; }
+    .tag-ak { background: #4A1B0C; border-color: #993C1D; color: #F5C4B3; }
+  }
+  .chevron { font-size: 12px; color: var(--text-sec); transition: transform .2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .step-body { display: none; padding: 14px; border-top: 0.5px solid var(--border); background: var(--bg); }
+  .step-body.open { display: block; }
+
+  .explanation {
+    font-size: 13px; line-height: 1.65; color: var(--text);
+    margin-bottom: 14px; padding: 10px 12px;
+    border-left: 2px solid #378ADD; background: var(--bg-sec);
+  }
+  .explanation strong { font-weight: 500; }
+
+  .matrices-wrap { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .mat-group { display: flex; flex-direction: column; gap: 4px; }
+  .mat-title { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 38px); gap: 3px; }
+  .cell {
+    width: 38px; height: 38px; border: 0.5px solid var(--border-sec); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-family: var(--font-mono); color: var(--text);
+    background: var(--bg-sec); transition: background .4s, color .4s, border-color .4s;
+  }
+  .hl-sub  { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
+  .hl-sh1  { background: #E1F5EE; border-color: #5DCAA5; color: #085041; }
+  .hl-sh2  { background: #C0DD97; border-color: #3B6D11; color: #173404; }
+  .hl-sh3  { background: #9FE1CB; border-color: #0F6E56; color: #04342C; }
+  .hl-mix  { background: #FAEEDA; border-color: #EF9F27; color: #633806; }
+  .hl-xor  { background: #FAECE7; border-color: #F0997B; color: #4A1B0C; }
+  @media (prefers-color-scheme: dark) {
+    .hl-sub { background: #26215C; border-color: #534AB7; color: #CECBF6; }
+    .hl-sh1 { background: #04342C; border-color: #0F6E56; color: #9FE1CB; }
+    .hl-sh2 { background: #173404; border-color: #3B6D11; color: #C0DD97; }
+    .hl-sh3 { background: #085041; border-color: #1D9E75; color: #E1F5EE; }
+    .hl-mix { background: #412402; border-color: #854F0B; color: #FAC775; }
+    .hl-xor { background: #4A1B0C; border-color: #993C1D; color: #F5C4B3; }
+  }
+  .xor-sym { font-size: 20px; color: var(--text-sec); align-self: center; padding-top: 18px; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-sec); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  .stepper-title { font-size: 13px; color: var(--text-sec); margin-bottom: 10px; }
+  .stepper-title strong { font-weight: 500; color: var(--text); }
+  footer { margin-top: 3rem; font-size: 11px; color: var(--text-ter); border-top: 0.5px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1><i class="ti ti-lock" aria-hidden="true"></i> AES — visualizzatore didattico</h1>
+  <p class="subtitle">Advanced Encryption Standard (AES-128) · 1 blocco · 16 byte · 10 round</p>
+
+  <div class="tabs-wrap">
+    <button class="tab-btn active" onclick="switchTab('enc',this)"><i class="ti ti-lock" aria-hidden="true"></i> cifratura</button>
+    <button class="tab-btn" onclick="switchTab('dec',this)"><i class="ti ti-lock-open" aria-hidden="true"></i> decifratura</button>
+  </div>
+
+  <div id="enc-panel">
+    <div class="section-label">inserisci i dati</div>
+    <div class="row">
+      <div class="field">
+        <label class="section-label" style="margin-bottom:0">testo in chiaro <span style="color:var(--text-ter)">(max 16 caratteri)</span></label>
+        <input type="text" id="pt" value="Hello, AES World!" maxlength="16">
+      </div>
+      <div class="field">
+        <label class="section-label" style="margin-bottom:0">chiave <span style="color:var(--text-ter)">(32 hex = 128 bit)</span></label>
+        <input type="text" id="key-e" value="0f1571c947d9e8590cb7add6af7f6798" maxlength="32" style="font-size:11px">
+        <div class="err" id="err-e"></div>
+      </div>
+    </div>
+    <div class="result-area"><div class="rl">testo cifrato (hex)</div><div class="rv" id="ct-out">—</div></div>
+  </div>
+
+  <div id="dec-panel" style="display:none">
+    <div class="section-label">inserisci i dati</div>
+    <div class="row">
+      <div class="field">
+        <label class="section-label" style="margin-bottom:0">testo cifrato (32 hex = 16 byte)</label>
+        <input type="text" id="ct" style="font-size:11px" placeholder="incolla il risultato della cifratura…">
+      </div>
+      <div class="field">
+        <label class="section-label" style="margin-bottom:0">chiave <span style="color:var(--text-ter)">(32 hex = 128 bit)</span></label>
+        <input type="text" id="key-d" value="0f1571c947d9e8590cb7add6af7f6798" maxlength="32" style="font-size:11px">
+        <div class="err" id="err-d"></div>
+      </div>
+    </div>
+    <div class="result-area"><div class="rl">testo in chiaro</div><div class="rv" id="pt-out">—</div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-go" id="btn-run" onclick="runAES()"><i class="ti ti-player-play" aria-hidden="true"></i> avvia</button>
+    <button id="btn-next" onclick="nextStep()" disabled><i class="ti ti-arrow-right" aria-hidden="true"></i> passo successivo</button>
+    <button id="btn-auto" onclick="toggleAuto()" disabled><i class="ti ti-player-play" aria-hidden="true" id="auto-icon"></i> automatico</button>
+    <button id="btn-reset" onclick="doReset()" disabled><i class="ti ti-refresh" aria-hidden="true"></i> ricomincia</button>
+    <div class="speed-wrap">
+      <label>velocità</label>
+      <input type="range" id="speed" min="1" max="5" value="3" step="1">
+      <span id="speed-lbl" style="font-size:11px;color:var(--text-sec);min-width:60px">normale</span>
+    </div>
+  </div>
+
+  <div class="phase-bar" id="phase-bar" style="display:none">
+    <div class="phase-pill" id="ph0">0 · preparazione</div>
+    <div class="phase-pill" id="ph1">1–9 · round principali</div>
+    <div class="phase-pill" id="ph10">10 · round finale</div>
+  </div>
+
+  <div class="status-bar" id="status-bar" style="display:none">
+    <div class="status-dot" id="status-dot"></div>
+    <div class="status-text" id="status-text">in attesa</div>
+  </div>
+
+  <div class="progress-track" id="prog-track" style="display:none">
+    <div class="progress-fill" id="prog-fill"></div>
+  </div>
+
+  <div id="stepper-wrap" style="display:none">
+    <p class="stepper-title"><strong>passaggi</strong> — clicca su un blocco per vedere i dettagli</p>
+    <div id="stepper"></div>
+  </div>
+
+  <footer>AES-128 implementato in JavaScript puro · nessuna libreria crittografica · solo 1 blocco (16 byte) · uso didattico</footer>
+</div>
+
+<script>
+const SBOX=[99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,147,38,54,63,247,204,52,165,229,241,113,216,49,21,4,199,35,195,24,150,5,154,7,18,128,226,235,39,178,117,9,131,44,26,27,110,90,160,82,59,214,179,41,227,47,132,83,209,0,237,32,252,177,91,106,203,190,57,74,76,88,207,208,239,170,251,67,77,51,133,69,249,2,127,80,60,159,168,81,163,64,143,146,157,56,245,188,182,218,33,16,255,243,210,205,12,19,236,95,151,68,23,196,167,126,61,100,93,25,115,96,129,79,220,34,42,144,136,70,238,184,20,222,94,11,219,224,50,58,10,73,6,36,92,194,211,172,98,145,149,228,121,231,200,55,109,141,213,78,169,108,86,244,234,101,122,174,8,186,120,37,46,28,166,180,198,232,221,116,31,75,189,139,138,112,62,181,102,72,3,246,14,97,53,87,185,134,193,29,158,225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22];
+const INV_SBOX=new Array(256);SBOX.forEach((v,i)=>INV_SBOX[v]=i);
+const RCON=[0,1,2,4,8,16,32,64,128,27,54];
+const speedMs=[0,800,450,220,80,0];
+const speedLbl=['istantaneo','lento','medio-lento','normale','veloce','istantaneo'];
+let mode='enc',snapshots=[],currentIdx=0,autoTimer=null,autoRunning=false;
+
+document.getElementById('speed').addEventListener('input',function(){
+  document.getElementById('speed-lbl').textContent=speedLbl[this.value];
+});
+
+function switchTab(t,el){
+  mode=t;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('enc-panel').style.display=t==='enc'?'block':'none';
+  document.getElementById('dec-panel').style.display=t==='dec'?'block':'none';
+  doReset();
+}
+
+function xtime(b){return((b<<1)^(b&128?27:0))&255;}
+function mul(a,b){let r=0;for(let i=0;i<8;i++){if(b&1)r^=a;a=xtime(a);b>>=1;}return r;}
+
+function keyExp(kb){
+  const w=[];
+  for(let i=0;i<4;i++)w.push(kb.slice(i*4,i*4+4));
+  for(let i=4;i<44;i++){
+    let t=[...w[i-1]];
+    if(i%4===0){t=[t[1],t[2],t[3],t[0]].map(b=>SBOX[b]);t[0]^=RCON[i/4];}
+    w.push(w[i-4].map((b,j)=>b^t[j]));
+  }
+  return w;
+}
+
+function rkBytes(w,r){const b=[];for(let c=0;c<4;c++)w[r*4+c].forEach(v=>b.push(v));return b;}
+function toState(b){return[[b[0],b[4],b[8],b[12]],[b[1],b[5],b[9],b[13]],[b[2],b[6],b[10],b[14]],[b[3],b[7],b[11],b[15]]];}
+function fromState(s){const b=[];for(let c=0;c<4;c++)for(let r=0;r<4;r++)b.push(s[r][c]);return b;}
+function addRK(s,rk){return s.map((row,r)=>row.map((v,c)=>v^rk[c*4+r]));}
+function subB(s){return s.map(r=>r.map(v=>SBOX[v]));}
+function invSubB(s){return s.map(r=>r.map(v=>INV_SBOX[v]));}
+function shiftR(s){return s.map((r,i)=>{const a=[...r];for(let k=0;k<i;k++)a.push(a.shift());return a;});}
+function invShiftR(s){return s.map((r,i)=>{const a=[...r];for(let k=0;k<i;k++)a.unshift(a.pop());return a;});}
+function mixC(s){
+  const out=s.map(r=>[...r]);
+  for(let c=0;c<4;c++){
+    const col=s.map(r=>r[c]);
+    out[0][c]=mul(2,col[0])^mul(3,col[1])^col[2]^col[3];
+    out[1][c]=col[0]^mul(2,col[1])^mul(3,col[2])^col[3];
+    out[2][c]=col[0]^col[1]^mul(2,col[2])^mul(3,col[3]);
+    out[3][c]=mul(3,col[0])^col[1]^col[2]^mul(2,col[3]);
+  }return out;
+}
+function invMixC(s){
+  const out=s.map(r=>[...r]);
+  for(let c=0;c<4;c++){
+    const col=s.map(r=>r[c]);
+    out[0][c]=mul(14,col[0])^mul(11,col[1])^mul(13,col[2])^mul(9,col[3]);
+    out[1][c]=mul(9,col[0])^mul(14,col[1])^mul(11,col[2])^mul(13,col[3]);
+    out[2][c]=mul(13,col[0])^mul(9,col[1])^mul(14,col[2])^mul(11,col[3]);
+    out[3][c]=mul(11,col[0])^mul(13,col[1])^mul(9,col[2])^mul(14,col[3]);
+  }return out;
+}
+
+function hexB(h){const b=[];for(let i=0;i<h.length;i+=2)b.push(parseInt(h.substr(i,2),16));return b;}
+function hex(b){return b.map(v=>v.toString(16).padStart(2,'0')).join('');}
+
+function snap(snaps,round,op,s,extra){snaps.push({round,op,bytes:fromState(s),extra:extra||{}});}
+
+function runEncrypt(ptB,keyB){
+  const w=keyExp(keyB),snaps=[];
+  let s=toState(ptB);
+  const rk0=rkBytes(w,0);
+  snap(snaps,0,'addRoundKey',addRK(s,rk0),{rk:rk0,prev:fromState(s)});
+  s=addRK(s,rk0);
+  for(let r=1;r<=10;r++){
+    const s1=subB(s); snap(snaps,r,'subBytes',s1,{prev:fromState(s)});
+    const s2=shiftR(s1); snap(snaps,r,'shiftRows',s2,{prev:fromState(s1)});
+    if(r<10){
+      const s3=mixC(s2); snap(snaps,r,'mixColumns',s3,{prev:fromState(s2)});
+      const rk=rkBytes(w,r); s=addRK(s3,rk); snap(snaps,r,'addRoundKey',s,{rk,prev:fromState(s3)});
+    } else {
+      const rk=rkBytes(w,10); s=addRK(s2,rk); snap(snaps,r,'addRoundKey',s,{rk,prev:fromState(s2)});
+    }
+  }
+  return snaps;
+}
+
+function runDecrypt(ctB,keyB){
+  const w=keyExp(keyB),snaps=[];
+  let s=toState(ctB);
+  const rk10=rkBytes(w,10);
+  snap(snaps,10,'addRoundKey',addRK(s,rk10),{rk:rk10,prev:fromState(s)});
+  s=addRK(s,rk10);
+  for(let r=9;r>=0;r--){
+    const s1=invShiftR(s); snap(snaps,r,'invShiftRows',s1,{prev:fromState(s)});
+    const s2=invSubB(s1); snap(snaps,r,'invSubBytes',s2,{prev:fromState(s1)});
+    const rk=rkBytes(w,r); const s3=addRK(s2,rk); snap(snaps,r,'addRoundKey',s3,{rk,prev:fromState(s2)});
+    if(r>0){s=invMixC(s3); snap(snaps,r,'invMixColumns',s,{prev:fromState(s3)});}
+    else s=s3;
+  }
+  return snaps;
+}
+
+const opInfo={
+  addRoundKey:{label:'AddRoundKey',tag:'tag-ak',title:'XOR con la sottochiave',
+    body:'Ogni byte dello stato viene combinato con il byte corrispondente della sottochiave mediante l\'operazione <strong>XOR (⊕)</strong>.<br><br>L\'XOR è reversibile: applicare due volte la stessa chiave riporta al valore originale. È il meccanismo che lega dati e chiave in ogni round.',
+    hl:(r,c)=>'hl-xor'},
+  subBytes:{label:'SubBytes',tag:'tag-sb',title:'Sostituzione non lineare',
+    body:'Ogni byte viene sostituito con un altro valore prelevato da una tabella fissa chiamata <strong>S-box</strong> (Substitution box).<br><br>La S-box introduce <strong>non linearità</strong>: senza di essa, AES sarebbe vulnerabile all\'analisi algebrica. Le celle evidenziate mostrano i byte già trasformati.',
+    hl:(r,c)=>'hl-sub'},
+  invSubBytes:{label:'InvSubBytes',tag:'tag-sb',title:'Sostituzione inversa',
+    body:'Come SubBytes, ma si utilizza la <strong>S-box inversa</strong>. Ogni byte viene riportato al valore che aveva prima della sostituzione.',
+    hl:(r,c)=>'hl-sub'},
+  shiftRows:{label:'ShiftRows',tag:'tag-sr',title:'Scorrimento delle righe',
+    body:'Le righe della matrice vengono scorte (shift circolare) verso <strong>sinistra</strong> di una quantità crescente:<br>· riga 0 → nessuno scorrimento<br>· riga 1 → 1 posizione<br>· riga 2 → 2 posizioni<br>· riga 3 → 3 posizioni<br><br>L\'operazione <strong>mescola i byte su colonne diverse</strong>, aumentando la diffusione del messaggio.',
+    hl:(r,c)=>r===0?'':(r===1?'hl-sh1':r===2?'hl-sh2':'hl-sh3')},
+  invShiftRows:{label:'InvShiftRows',tag:'tag-sr',title:'Scorrimento inverso',
+    body:'Come ShiftRows ma in direzione opposta, verso <strong>destra</strong>. Riporta ogni riga alla disposizione che aveva prima dello scorrimento.',
+    hl:(r,c)=>r===0?'':(r===1?'hl-sh1':r===2?'hl-sh2':'hl-sh3')},
+  mixColumns:{label:'MixColumns',tag:'tag-mc',title:'Mescolamento delle colonne',
+    body:'Ogni colonna è moltiplicata per una <strong>matrice fissa nel campo di Galois GF(2⁸)</strong>. Il risultato è una combinazione lineare dei quattro byte della colonna.<br><br>È l\'operazione più costosa computazionalmente, ma garantisce che ogni byte di uscita <strong>dipenda da tutti e quattro</strong> i byte in ingresso. La prima colonna è evidenziata come esempio.',
+    hl:(r,c)=>c===0?'hl-mix':''},
+  invMixColumns:{label:'InvMixColumns',tag:'tag-mc',title:'Mescolamento inverso',
+    body:'Come MixColumns ma con la <strong>matrice inversa</strong>. Riporta ogni colonna al valore che aveva prima del mescolamento.',
+    hl:(r,c)=>c===0?'hl-mix':''}
+};
+
+function renderGrid(bytes,hlFn){
+  const s=toState(bytes);
+  let h='<div class="grid4">';
+  for(let r=0;r<4;r++) for(let c=0;c<4;c++){
+    const cls=hlFn?hlFn(r,c):'';
+    h+=`<div class="cell ${cls}">${s[r][c].toString(16).padStart(2,'0')}</div>`;
+  }
+  return h+'</div>';
+}
+
+function phaseOf(round,op){
+  if(op==='addRoundKey'&&round===0)return 'ph0';
+  if(round===10||(round===9&&op.startsWith('inv')))return 'ph10';
+  return 'ph1';
+}
+
+function buildStepHTML(snap,idx){
+  const info=opInfo[snap.op]||{label:snap.op,tag:'tag-ak',title:snap.op,body:'',hl:()=>''};
+  const hasRK=snap.extra.rk&&snap.extra.rk.length;
+  const hasPrev=snap.extra.prev;
+  const isShift=snap.op==='shiftRows'||snap.op==='invShiftRows';
+  return `
+  <div class="step-header" onclick="toggleStep(${idx})">
+    <div class="step-badge" id="badge-${idx}">${idx+1}</div>
+    <div style="flex:1">
+      <div class="step-title">${info.title}</div>
+      <div class="step-round">round ${snap.round}</div>
+    </div>
+    <span class="op-tag ${info.tag}">${info.label}</span>
+    <i class="ti ti-chevron-down chevron" id="chev-${idx}" aria-hidden="true"></i>
+  </div>
+  <div class="step-body" id="body-${idx}">
+    <div class="explanation">${info.body}</div>
+    <div class="matrices-wrap">
+      ${hasPrev?`<div class="mat-group"><div class="mat-title">prima</div>${renderGrid(snap.extra.prev,null)}</div><div class="xor-sym">→</div>`:''}
+      <div class="mat-group"><div class="mat-title">dopo</div>${renderGrid(snap.bytes,info.hl)}</div>
+      ${hasRK?`<div class="xor-sym">⊕</div><div class="mat-group"><div class="mat-title">sottochiave</div>${renderGrid(snap.extra.rk,null)}</div>`:''}
+    </div>
+    ${isShift?`<div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#E1F5EE;border:0.5px solid #5DCAA5"></div>riga 1</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#C0DD97;border:0.5px solid #3B6D11"></div>riga 2</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9FE1CB;border:0.5px solid #0F6E56"></div>riga 3</div>
+    </div>`:''}
+  </div>`;
+}
+
+function toggleStep(idx){
+  const b=document.getElementById(`body-${idx}`);
+  const ch=document.getElementById(`chev-${idx}`);
+  if(b){b.classList.toggle('open');if(ch)ch.classList.toggle('open');}
+}
+
+function setPhase(round,op){
+  ['ph0','ph1','ph10'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.classList.remove('active','done');}
+  });
+  const cur=phaseOf(round,op);
+  const order=['ph0','ph1','ph10'];
+  const ci=order.indexOf(cur);
+  order.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el){if(i<ci)el.classList.add('done');else if(i===ci)el.classList.add('active');}
+  });
+}
+
+function setStatus(text,running){
+  const dot=document.getElementById('status-dot');
+  const st=document.getElementById('status-text');
+  if(dot)dot.className='status-dot'+(running===true?' running':running===false?' done-dot':'');
+  if(st)st.textContent=text;
+}
+
+function updateProgress(){
+  const p=document.getElementById('prog-fill');
+  if(p)p.style.width=Math.round((currentIdx/snapshots.length)*100)+'%';
+}
+
+function runAES(){
+  const isEnc=mode==='enc';
+  const keyId=isEnc?'key-e':'key-d';
+  const errId=isEnc?'err-e':'err-d';
+  document.getElementById(errId).textContent='';
+  const keyHex=document.getElementById(keyId).value.trim();
+  if(!/^[0-9a-fA-F]{32}$/.test(keyHex)){
+    document.getElementById(errId).textContent='La chiave deve essere esattamente 32 caratteri esadecimali.';return;
+  }
+  if(isEnc){
+    const pt=document.getElementById('pt').value;
+    const ptPad=pt.padEnd(16,'\0');
+    const ptB=Array.from(ptPad).map(c=>c.charCodeAt(0));
+    snapshots=runEncrypt(ptB,hexB(keyHex));
+    const last=snapshots[snapshots.length-1].bytes;
+    const ctHex=hex(last);
+    document.getElementById('ct-out').textContent=ctHex;
+    document.getElementById('ct').value=ctHex;
+  } else {
+    const ctHex=document.getElementById('ct').value.trim();
+    if(!/^[0-9a-fA-F]{32}$/.test(ctHex)){
+      document.getElementById(errId).textContent='Il testo cifrato deve essere 32 caratteri esadecimali (16 byte).';return;
+    }
+    snapshots=runDecrypt(hexB(ctHex),hexB(keyHex));
+    const last=snapshots[snapshots.length-1].bytes;
+    const ptText=last.map(b=>String.fromCharCode(b)).join('').replace(/\0+$/,'');
+    document.getElementById('pt-out').textContent=ptText;
+  }
+  currentIdx=0;
+  document.getElementById('stepper').innerHTML='';
+  document.getElementById('stepper-wrap').style.display='block';
+  document.getElementById('phase-bar').style.display='flex';
+  document.getElementById('status-bar').style.display='flex';
+  document.getElementById('prog-track').style.display='block';
+  document.getElementById('prog-fill').style.width='0%';
+  setStatus('pronto — premi "passo successivo" o "automatico"',null);
+  document.getElementById('btn-next').disabled=false;
+  document.getElementById('btn-auto').disabled=false;
+  document.getElementById('btn-reset').disabled=false;
+  document.getElementById('btn-run').disabled=true;
+}
+
+function revealStep(idx){
+  if(idx>=snapshots.length)return;
+  const s=snapshots[idx];
+  const container=document.getElementById('stepper');
+  const div=document.createElement('div');
+  div.className='step-item';
+  div.id=`si-${idx}`;
+  div.innerHTML=buildStepHTML(s,idx);
+  container.appendChild(div);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>div.classList.add('vis')));
+  document.querySelectorAll('.step-item').forEach((el,i)=>{
+    el.classList.remove('current','done-step');
+    if(i===idx)el.classList.add('current');
+    else if(i<idx)el.classList.add('done-step');
+  });
+  setPhase(s.round,s.op);
+  const info=opInfo[s.op];
+  setStatus(`round ${s.round} — ${info?info.label:s.op}`,true);
+  updateProgress();
+  if(idx===snapshots.length-1){
+    setStatus('elaborazione completata',false);
+    document.getElementById('btn-next').disabled=true;
+    document.getElementById('btn-auto').disabled=true;
+    ['ph0','ph1','ph10'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.classList.add('done');}});
+    document.getElementById('prog-fill').style.width='100%';
+    stopAuto();
+  }
+  currentIdx=idx+1;
+}
+
+function nextStep(){if(currentIdx<snapshots.length)revealStep(currentIdx);}
+
+function toggleAuto(){if(autoRunning)stopAuto();else startAuto();}
+
+function startAuto(){
+  autoRunning=true;
+  document.getElementById('btn-auto').innerHTML='<i class="ti ti-player-pause" aria-hidden="true"></i> pausa';
+  document.getElementById('btn-next').disabled=true;
+  const delay=speedMs[parseInt(document.getElementById('speed').value)];
+  if(delay===0){while(currentIdx<snapshots.length)revealStep(currentIdx);stopAuto();return;}
+  function tick(){
+    if(!autoRunning||currentIdx>=snapshots.length){stopAuto();return;}
+    revealStep(currentIdx);
+    autoTimer=setTimeout(tick,delay);
+  }tick();
+}
+
+function stopAuto(){
+  autoRunning=false;
+  clearTimeout(autoTimer);
+  document.getElementById('btn-auto').innerHTML='<i class="ti ti-player-play" aria-hidden="true"></i> automatico';
+  if(currentIdx<snapshots.length)document.getElementById('btn-next').disabled=false;
+}
+
+function doReset(){
+  stopAuto();
+  snapshots=[];currentIdx=0;
+  document.getElementById('stepper').innerHTML='';
+  ['stepper-wrap','phase-bar','status-bar','prog-track'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('btn-next').disabled=true;
+  document.getElementById('btn-auto').disabled=true;
+  document.getElementById('btn-reset').disabled=true;
+  document.getElementById('btn-run').disabled=false;
+  document.getElementById('ct-out').textContent='—';
+  document.getElementById('pt-out').textContent='—';
+  document.getElementById('err-e').textContent='';
+  document.getElementById('err-d').textContent='';
+}
+</script>
+</body>
+</html>
